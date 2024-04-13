@@ -48,7 +48,7 @@ const List = () => {
   // Função acionada com useState é força a atualização do componente a cada mudança
   useEffect(() => {
     buscarTeams();
-  })
+  }, [])
 
   return (
     // gap-3 = 1rem que equivale a 16px
