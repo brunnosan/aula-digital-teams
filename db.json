@@ -1,25 +1,28 @@
 {
-  "teams" : [
+  "teams": [
     {
-      "id": 1,
+      "id": "1",
       "nome": "team fs07-1",
-      "capacidade": 20
+      "capacidade": 20,
+      "participante": []
     },
     {
-      "id": 2,
+      "id": "2",
       "nome": "team fs07-2",
-      "capacidade": 10
+      "capacidade": 10,
+      "participante": []
     },
     {
-      "id": 3,
+      "id": "3",
       "nome": "team fs07-3",
-      "capacidade": 30
-    }
-  ],
-  "participante": [
+      "capacidade": 30,
+      "participante": []
+    },
     {
-      "id": 1,
-      "nome": "fernando"
+      "id": "4",
+      "nome": "team fs07-4",
+      "capacidade": 40,
+      "participante": []
     }
   ]
 }
