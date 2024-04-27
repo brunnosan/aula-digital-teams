@@ -3,18 +3,25 @@ import { Button } from 'primereact/button';
 import { Sidebar } from 'primereact/sidebar';
 import { Dialog } from 'primereact/dialog';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useContext } from 'react';
 import { InputText } from 'primereact/inputtext';
 import { InputMask } from 'primereact/inputmask';
 import { useForm } from 'react-hook-form';
-        
+import { FilterContext } from '../../App';
+
 
 const List = () => {
 
   const [mostrarSidebar, setMostrarSidebar] = useState(false);
   const [mostrarSidebarAdd, setMostrarSidebarAdd] = useState(false);
   const [mostrarDialog, setMostrarDialog] = useState(false);
-  const [teams, setTeams] = useState([]);
+  const [teams, setTeams] = useState([]); //Lista de teams usada comumente no projeto
+  const teamSelected = useRef();
+  //Variáveis utilizadas para filtrar os teams da lista
+  //Considera o filtro passado via contexto e preenchido no Header
+  //Lembrando que, por usar o useContext, ele já atribui um valor para a variável recém criada
+  const { filter } = useContext(FilterContext);
+  const [teamsFiltered, setTeamsFiltered] = useState([]); //Lista de teams a ser usada durante filtros
 
   //Forma de usar o react-hook-form
   //Para evitar que se crie um useRef para cada campo de um formulãrio (no caso, do formulário do sidebar)
@@ -24,7 +31,15 @@ const List = () => {
 
   //Para evitar criar uma variável que tenha o objeto do hook-form, a sugestão é já criar o objeto desestruturado
   //  caso contrário, seria usado variavel.register e se escreveria mais
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset } = useForm({
+    defaultValues: {
+      id: '',
+      nome: '',
+      capacidade: 0,
+      participante: []
+    }
+  });
+
   const { register: registerP, handleSubmit: handleSubmitP, reset: resetP, setValue: setValueP } = useForm();
 
   async function cadastrar(dados) {
@@ -35,6 +50,7 @@ const List = () => {
       },
       body: JSON.stringify(dados)
     })
+
     const response = await request.json();
     // console.log(response);
     // setTeams(response);
@@ -46,23 +62,30 @@ const List = () => {
   }
 
   async function cadastrarP(dados) {
-    // const request = await fetch('http://localhost:3000/teams', {
-    //   method: 'post',
-    //   headers: {
-    //     'Content-type': 'application/json'
-    //   },
-    //   body: JSON.stringify(dados)
-    // })
-    // const response = await request.json();
-    // if (response) {
-    //   resetP();
-    //   setMostrarSidebarAdd(false);
-    // }
-    console.log(dados);
-    setMostrarSidebarAdd(false);
+    const team = teams.find(team => team.id == dados.id);
+    team.participante.push(dados.nome);
+    const request = await fetch(`http://localhost:3000/teams/${dados.id}`, {
+      method: 'put',
+      headers: {
+        'Content-type': 'application/json'
+      },
+      body: JSON.stringify(team)
+    })
+    const response = await request.json();
+    if (response) {
+      resetP();
+      buscarTeams();
+    }
+    // setMostrarSidebarAdd(false);
   }
 
-  function confirmacao(id) {
+// ---------------------------------------------------------
+  async function excluirP(dados) {
+    const team = teams.find(team => team.id = dados.id);
+  }
+// ---------------------------------------------------------
+
+function confirmacao(id) {
     confirmDialog ({
       header: 'Aviso',
       message: 'Deseja realmente apagar este item?',
@@ -79,10 +102,15 @@ const List = () => {
     })
   }
 
-  const titulo = (nome) => (
+  const titulo = (nome, id) => (
     <div className='flex justify-content-between align-items-center text-lg'>
       {nome}
-      <i className='pi pi-eye cursor-pointer' onClick={() => setMostrarDialog(true)}></i>
+      <i className='pi pi-eye cursor-pointer'
+        onClick={() => {
+          teamSelected.current = id;
+          setMostrarDialog(true)
+        }}>
+      </i>
     </div>
   )
 
@@ -94,7 +122,7 @@ const List = () => {
           setMostrarSidebarAdd(true);
         }}
       />
-      <Button icon='pi pi-trash' onClick={() => confirmacao(id)}/>
+      <Button icon='pi pi-trash' onClick={() => confirmacao(id)} />
       {/* Se a função receber parâmetro, precisa abrir uma arrow function, caso contrário, pode só nomear a função */}
     </div>
   )
@@ -107,15 +135,24 @@ const List = () => {
 
   // Função acionada com useEffect não é acionada em toda atualização do componente
   // Função acionada com useState é força a atualização do componente a cada mudança
+  // Quando o array de dependência estiver vazio, ele só executa no início
   useEffect(() => {
     buscarTeams();
   }, [])
+
+  useEffect(() => {
+    if (filter != "") {
+      setTeamsFiltered([...teams.filter((team) => team.nome.toLowerCase().includes(filter.toLowerCase()))]);
+      return;
+    }
+    setTeamsFiltered(teams)
+  }, [filter, teams])
 
   return (
     // gap-3 = 1rem que equivale a 16px
     <section className='flex flex-wrap gap-3 px-8'>
       <h2 className='w-full flex align-items-center justify-content-between'>
-        Teams
+        Teams {filter}
         <Button label='novo team' icon='pi pi-plus' onClick={() => setMostrarSidebar(true)} />
       </h2>
       {/* por conta do gap-3 que equivale a 16px, entre cada card tem 16px de espaçamento
@@ -124,9 +161,10 @@ const List = () => {
        */
       }
       {
-        teams && teams.map((team) => (
-            <Card key={`team${team.id}`} style={{width: 'calc(20% - 13px)'}} title={() => titulo(team.nome)} footer={() => footer(team.id)}>
-              <h1 className='mx-auto flex flex-column text-center'>
+        // teams && teams.map((team) => (
+        teamsFiltered && teamsFiltered.map((team) => (
+          <Card key={`team${team.id}`} style={{width: 'calc(20% - 13px)'}} title={() => titulo(team.nome, team.id)} footer={() => footer(team.id)}>
+              <h1 className='mx-auto text-5xl flex flex-column text-center border-circle m-auto h-6rem w-6rem justify-content-center bg-primary'>
                 {team.participante.length} <span className='text-sm'>/ {team.capacidade}</span>
               </h1>
             </Card>
@@ -144,7 +182,7 @@ const List = () => {
           <InputText
             id="nome"
             placeholder='Digite o nome do time'
-            className='w-full md-3'
+            className='w-full mb-3'
             {...register('nome', {required: true})}
           />
           <label htmlFor="capacidade" className='uppercase text-sm font-bold mb-2 block'>Capacidade</label>
@@ -173,7 +211,7 @@ const List = () => {
           <InputText
             id="nome"
             placeholder='Digite o nome do participante'
-            className='w-full md-3'
+            className='w-full mb-3'
             {...registerP('nome', {required: true})}
           />
           <Button
@@ -186,10 +224,18 @@ const List = () => {
       <Dialog
         visible={mostrarDialog}
         onHide={() => setMostrarDialog(false)}
-        style={{ width: '50%'}}
+        style={{ width: '25%'}}
         position='bottom'
+        header={<h4>{teamSelected.current && teams.find(team => team.id == teamSelected.current).nome}</h4>}
       >
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Deserunt maiores voluptate velit veritatis assumenda, amet ipsa exercitationem necessitatibus atque ullam porro, ea excepturi sint quod illo reiciendis fuga totam vitae.
+        {/* <h3>Lista de participantes do time</h3> */}
+        {
+          teamSelected.current && teams.find(team => team.id == teamSelected.current).participante.map((p, index) => (
+            <p className='flex justify-content-between' key={index}>
+              {p} <i className='pi pi-trash'></i>
+            </p>
+          ))
+        }
       </Dialog>
 
       <ConfirmDialog />
